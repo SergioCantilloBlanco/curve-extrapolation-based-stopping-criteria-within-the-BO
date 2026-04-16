@@ -4,7 +4,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 
 
-class SugorrateModel:
+class SurrogateModel:
 
     def __init__(self):
         #kernel = RBF(1.0)
