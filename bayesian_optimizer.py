@@ -1,7 +1,6 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 
 from acquisition_function import acquisition_ucb
 from surrogate_model import SurrogateModel
@@ -9,7 +8,8 @@ from surrogate_model import SurrogateModel
 
 class BayesianOptimizer:
 
-    def __init__(self,bounds,num_samples,num_iter, surrogate, acquisition, stopping = None ) -> None:
+    def __init__(self,objective,bounds,num_samples,num_iter, surrogate, acquisition, stopping = None ) -> None:
+        self.objective = objective
         self.bounds = bounds
         self.num_iter = num_iter
         self.num_samples = num_samples
@@ -19,18 +19,18 @@ class BayesianOptimizer:
         self.X = []
         self.y = []
 
-    def initialize(self, objective):
+    def initialize(self):
         for _ in range(self.num_samples):
             #x = np.random.uniform([b[0] for b in self.bounds], [b[1] for b in self.bounds])
             x = np.random.uniform(self.bounds[0], self.bounds[-1])
-            y = objective(x)
+            y = self.objective(x)
 
             self.X = np.append(self.X, x)
             self.y = np.append(self.y, y)
     
     def plot(self, y_pred, y_std,new_x,new_y,i):
         fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(self.bounds, self.acquisition(self.bounds), label='Black Box Function')
+        ax.plot(self.bounds, self.objective(self.bounds), label='Black Box Function')
         ax.scatter(self.X, self.y, color='red', label='Samples')
         ax.scatter(new_x, new_y, color='blue', label='New point')
         ax.plot(self.bounds, y_pred, color='blue', label='Gaussian Process')
@@ -50,7 +50,7 @@ class BayesianOptimizer:
             ucb = self.acquisition(y_pred, y_std)
 
             new_x = self.bounds[np.argmax(ucb)]
-            new_y = self.acquisition(new_x)
+            new_y = self.objective(new_x)
             self.X = np.append(self.X, new_x)
             self.y = np.append(self.y, new_y)
             self.plot(y_pred,y_std,new_x,new_y,i)
@@ -64,8 +64,8 @@ def black_box_function(x):
 if __name__ == "__main__":
     x_range = np.linspace(-2*np.pi, 2*np.pi, 200)
     surrogate_model = SurrogateModel()
-    optimizer = BayesianOptimizer(x_range,5,15,surrogate_model,acquisition_ucb)
-    optimizer.initialize(black_box_function)
+    optimizer = BayesianOptimizer(black_box_function,x_range,5,15,surrogate_model,acquisition_ucb)
+    optimizer.initialize()
     optimizer.loop()
 
 
