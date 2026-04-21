@@ -16,6 +16,7 @@ class BayesianOptimizer:
         self.surrogate = surrogate
         self.acquisition = acquisition
         self.stopping = stopping
+        self.best_value_y = []
         self.X = []
         self.y = []
 
@@ -29,13 +30,15 @@ class BayesianOptimizer:
             self.y = np.append(self.y, y)
     
     def plot(self, y_pred, y_std,new_x,new_y,i):
-        fig, ax = plt.subplots(figsize=(10, 5))
-        ax.plot(self.bounds, self.objective(self.bounds), label='Black Box Function')
-        ax.scatter(self.X, self.y, color='red', label='Samples')
-        ax.scatter(new_x, new_y, color='blue', label='New point')
-        ax.plot(self.bounds, y_pred, color='blue', label='Gaussian Process')
-        ax.fill_between(self.bounds, y_pred - 2*y_std, y_pred + 2*y_std, color='blue', alpha=0.2)
-        ax.set(title=f'Black Box Function with Gaussian Process Surrogate Model Loop Nº{i}', ylabel='Black Box Output', xlabel='x')
+        fig, (ax1, ax2) = plt.subplots(nrows=1,ncols=2,figsize=(10, 5))
+        ax1.plot(self.bounds, self.objective(self.bounds), label='Black Box Function')
+        ax1.scatter(self.X, self.y, color='red', label='Samples')
+        ax1.scatter(new_x, new_y, color='blue', label='New point')
+        ax1.plot(self.bounds, y_pred, color='blue', label='Gaussian Process')
+        ax1.fill_between(self.bounds, y_pred - 2*y_std, y_pred + 2*y_std, color='blue', alpha=0.2)
+        ax1.set(title=f'Black Box Function with Gaussian Process Surrogate Model Loop Nº{i}', ylabel='Black Box Output', xlabel='x')
+        ax2.plot(np.arange(len(self.best_value_y)), self.best_value_y, label='convergence curve')
+
         plt.show()
 
 
@@ -51,8 +54,10 @@ class BayesianOptimizer:
 
             new_x = self.bounds[np.argmax(ucb)]
             new_y = self.objective(new_x)
+
             self.X = np.append(self.X, new_x)
             self.y = np.append(self.y, new_y)
+            self.best_value_y.append(np.max(self.y))
             self.plot(y_pred,y_std,new_x,new_y,i)
 
 
@@ -64,7 +69,7 @@ def black_box_function(x):
 if __name__ == "__main__":
     x_range = np.linspace(-2*np.pi, 2*np.pi, 200)
     surrogate_model = SurrogateModel()
-    optimizer = BayesianOptimizer(black_box_function,x_range,5,15,surrogate_model,acquisition_ucb)
+    optimizer = BayesianOptimizer(black_box_function,x_range,5,30,surrogate_model,acquisition_ucb)
     optimizer.initialize()
     optimizer.loop()
 
