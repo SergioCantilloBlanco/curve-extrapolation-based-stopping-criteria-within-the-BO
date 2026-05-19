@@ -1,12 +1,11 @@
-
-import math
-
 import matplotlib.pyplot as plt
 import numpy as np
+
 from scipy.optimize import curve_fit
-import sklearn
+
 from acquisition_function import acquisition_lcb
 from surrogate_model import SurrogateModel
+from functions import *
 
 
 class BayesianOptimizer:
@@ -43,7 +42,7 @@ class BayesianOptimizer:
         ax2.plot(np.arange(len(self.best_value_y)), self.best_value_y,color='orange', label='convergence curve')
         ax2.scatter(np.arange(len(self.best_value_y)), self.best_value_y, color='blue', label='samples')
 
-    def multid_plot(self, y_pred, y_std,new_x,new_y,i):
+    def multid_plot(self, y_pred, y_std,new_x,new_y,optimal_values,i):
         fig, (ax1, ax2) = plt.subplots(nrows=1,ncols=2,figsize=(10, 5))
 
         x_plot = np.linspace(self.bounds[0,0], self.bounds[0,1], 200)
@@ -70,7 +69,10 @@ class BayesianOptimizer:
         ax1.set_title(f'Iteration {i}')
         ax1.legend()
 
+        extrapolated_curve_x = np.linspace(0,i+5,200)
+        extrapolated_curve_y = exp_decay(extrapolated_curve_x, *optimal_values)
         ax2.plot(self.best_value_y, color='orange')
+        ax2.plot(extrapolated_curve_x, extrapolated_curve_y, color='blue', linestyle = 'dashed')
         ax2.set_title("Convergence")
 
         plt.show()
@@ -79,6 +81,9 @@ class BayesianOptimizer:
         for i in range(self.num_iter):
             X = np.array(self.X)
             y = np.array(self.y)
+
+            
+
             self.surrogate.fit(X, y)
 
             candidates = np.random.uniform([b[0] for b in self.bounds],[b[1] for b in self.bounds],size=(1000, len(self.bounds)))
@@ -92,38 +97,26 @@ class BayesianOptimizer:
             self.y.append(new_y)
             self.best_value_y.append(np.min(self.y))
 
-            self.multid_plot(y_pred,y_std,new_x,new_y,i)
+            if len(self.best_value_y) > 50:
+                try:
+                    x_data_convergence_curve = np.arange(len(self.best_value_y))
+                    a = self.best_value_y[0] - self.best_value_y[-1]
+                    b = 0.1
+                    c = self.best_value_y[-1]
+
+                    optimal_values, covariance = curve_fit(exp_decay, x_data_convergence_curve, self.best_value_y, p0=[a,b,c], maxfev=10000)
+
+                    self.multid_plot(y_pred,y_std,new_x,new_y,optimal_values,i)
+                except:
+                    print('Curve couldnt fit')
 
 
-
-def black_box_function(x) -> float:
-    y = np.sin(x) + np.cos(2*x)
-    return y
-
-def black_box_function_2(x) -> float:
-    if isinstance(x, float):
-        x = [x]
-
-    w0 = 1 + (x[0] - 1) / 4
-    term1 = np.power(np.sin(np.pi * w0), 2)
-
-    term2 = 0
-    for i in range(len(x) - 1):
-        wi = 1 + (x[i] - 1) / 4
-        term2 += np.power(wi - 1, 2) * (1 + 10 * np.power(np.sin(wi * np.pi + 1), 2))
-
-    wd = 1 + (x[-1] - 1) / 4
-    term3 = np.power(wd - 1, 2)
-    term3 *= 1 + np.power(np.sin(2 * np.pi * wd), 2)
-
-    y = term1 + term2 + term3
-    return y
 
 if __name__ == "__main__":
     #x_range = np.linspace(-2*np.pi, 2*np.pi, 200)
     x_bounds = np.array([(-15,20)])
     surrogate_model = SurrogateModel()
-    optimizer = BayesianOptimizer(black_box_function_2,x_bounds,5,30,surrogate_model,acquisition_lcb)
+    optimizer = BayesianOptimizer(black_box_function_2,x_bounds,5,60,surrogate_model,acquisition_lcb)
     optimizer.initialize()
     optimizer.loop()
 
