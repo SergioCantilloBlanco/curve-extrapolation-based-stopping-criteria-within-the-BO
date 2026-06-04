@@ -10,7 +10,7 @@ from functions import *
 
 class BayesianOptimizer:
 
-    def __init__(self,objective,bounds,num_samples,num_iter, surrogate, acquisition, stopping = None ) -> None:
+    def __init__(self,objective,bounds,num_samples,num_iter, surrogate, acquisition, epsilon, stopping = None ) -> None:
         self.objective = objective
         self.bounds = bounds
         self.num_iter = num_iter
@@ -18,6 +18,7 @@ class BayesianOptimizer:
         self.surrogate = surrogate
         self.acquisition = acquisition
         self.stopping = stopping
+        self.epsilon = epsilon
         self.best_value_y = []
         self.X = []
         self.y = []
@@ -30,6 +31,9 @@ class BayesianOptimizer:
 
             self.X.append(x)
             self.y.append(y)
+            self.best_value_y.append(np.min(self.y))
+
+
     
     def oned_plot(self, y_pred, y_std,new_x,new_y,i):
         fig, (ax1, ax2) = plt.subplots(nrows=1,ncols=2,figsize=(10, 5))
@@ -56,10 +60,10 @@ class BayesianOptimizer:
         x_test = np.array(x_test)
 
         y_true = np.array([self.objective(x) for x in x_test])
-        ax1.plot(x_plot, y_true, label="True function slice")
+        ax1.plot(x_plot, y_true, label="true function")
 
         y_pred, y_std = self.surrogate.predict(x_test)
-        ax1.plot(x_plot, y_pred, color='blue', label='GP Mean')
+        ax1.plot(x_plot, y_pred, color='blue', label='GP')
 
         ax1.fill_between(x_plot,y_pred - 2*y_std,y_pred + 2*y_std,alpha=0.2)
 
@@ -69,16 +73,17 @@ class BayesianOptimizer:
         ax1.set_title(f'Iteration {i}')
         ax1.legend()
 
-        extrapolated_curve_x = np.linspace(0,i+5,200)
+        extrapolated_curve_x = np.linspace(0,len(self.best_value_y)+5,200)
         extrapolated_curve_y = exp_decay(extrapolated_curve_x, *optimal_values)
-        ax2.plot(self.best_value_y, color='orange')
-        ax2.plot(extrapolated_curve_x, extrapolated_curve_y, color='blue', linestyle = 'dashed')
+        ax2.plot(self.best_value_y, color='orange', label="convergence curve")
+        ax2.plot(extrapolated_curve_x, extrapolated_curve_y, color='blue', linestyle = 'dashed', label="extrapolated curve")
         ax2.set_title("Convergence")
+        ax2.legend()
 
         plt.show()
 
     def loop(self):
-        for i in range(self.num_iter):
+        for i in range(1000):
             X = np.array(self.X)
             y = np.array(self.y)
 
@@ -97,26 +102,28 @@ class BayesianOptimizer:
             self.y.append(new_y)
             self.best_value_y.append(np.min(self.y))
 
-            if len(self.best_value_y) > 50:
-                try:
-                    x_data_convergence_curve = np.arange(len(self.best_value_y))
-                    a = self.best_value_y[0] - self.best_value_y[-1]
-                    b = 0.1
-                    c = self.best_value_y[-1]
-
-                    optimal_values, covariance = curve_fit(exp_decay, x_data_convergence_curve, self.best_value_y, p0=[a,b,c], maxfev=10000)
-
-                    self.multid_plot(y_pred,y_std,new_x,new_y,optimal_values,i)
-                except:
-                    print('Curve couldnt fit')
-
+            x_data_convergence_curve = np.arange(len(self.best_value_y))
+            a = self.best_value_y[0] - self.best_value_y[-1]
+            b = 0.1
+            c = self.best_value_y[-1]
+            try:
+                if len(self.best_value_y) > 10:
+                    optimal_values, covariance = curve_fit(exp_decay, x_data_convergence_curve, self.best_value_y,p0=[a,b,c], bounds = ([0, 0, self.best_value_y[-1] - self.best_value_y[0] + self.best_value_y[-1]], [self.best_value_y[0], np.inf, self.best_value_y[-1]]), maxfev=10000)
+                    percentage_gain = ((c - optimal_values[-1]) / c)*100
+                    print(f"Percentage gain:{percentage_gain}")
+                    if percentage_gain < self.epsilon:
+                        print(f"Best value: {c}")
+                        self.multid_plot(y_pred,y_std,new_x,new_y,optimal_values,i)
+                        break
+            except:
+                print("Something went wrong")
 
 
 if __name__ == "__main__":
     #x_range = np.linspace(-2*np.pi, 2*np.pi, 200)
     x_bounds = np.array([(-15,20)])
     surrogate_model = SurrogateModel()
-    optimizer = BayesianOptimizer(black_box_function_2,x_bounds,5,60,surrogate_model,acquisition_lcb)
+    optimizer = BayesianOptimizer(black_box_function_2,x_bounds,5,20,surrogate_model,acquisition_lcb,1e-10)
     optimizer.initialize()
     optimizer.loop()
 
