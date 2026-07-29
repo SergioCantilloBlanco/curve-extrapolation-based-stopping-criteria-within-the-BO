@@ -2,15 +2,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import curve_fit
 
-from acquisition_function import acquisition_lcb
+from acquisition_function import *
 from functions import *
 from recorded_points import RecordedPoints
+from stopping_criteria import *
 from surrogate_model import SurrogateModel
 
 
 class BayesianOptimizer:
 
-    def __init__(self,objective,bounds,num_samples,num_iter, surrogate, acquisition, epsilon, stopping = False ) -> None:
+    def __init__(self,objective,bounds,num_samples,num_iter, surrogate, acquisition, stopping) -> None:
         self.objective = objective
         self.bounds = bounds
         self.num_iter = num_iter
@@ -18,16 +19,24 @@ class BayesianOptimizer:
         self.surrogate = surrogate
         self.acquisition = acquisition
         self.stopping = stopping
-        self.epsilon = epsilon
         self.recorded_points = RecordedPoints()
 
     def initialize(self):
         for _ in range(self.num_samples):
-            x = np.random.uniform([b[0] for b in self.bounds], [b[1] for b in self.bounds])
-            #x = np.random.uniform(self.bounds[0], self.bounds[-1])
+            x = np.random.uniform(self.bounds[:,0], self.bounds[:,1])
             y = self.objective(x)
 
             self.recorded_points.add(x,y)
+
+    def generate_candidates(self, n_candidates = 1000):
+        lower = self.bounds[:,0]
+        upper = self.bounds[:,1]
+
+        return np.random.uniform(
+            lower,
+            upper,
+            size=(n_candidates, len(self.bounds))
+    )
 
     def step(self):
         X = np.array(self.recorded_points.X)
@@ -35,9 +44,9 @@ class BayesianOptimizer:
 
         self.surrogate.fit(X, y)
 
-        candidates = np.random.uniform([b[0] for b in self.bounds],[b[1] for b in self.bounds],size=(1000, len(self.bounds)))
+        candidates = self.generate_candidates()
         y_pred, y_std = self.surrogate.predict(candidates)
-        ucb = self.acquisition(y_pred, y_std)
+        ucb = self.acquisition(y_pred, y_std,current_best = self.recorded_points.best_y[-1])
 
         new_x = candidates[np.argmin(ucb)]
         new_y = self.objective(new_x)
@@ -46,8 +55,6 @@ class BayesianOptimizer:
         self.recorded_points.add(new_x,new_y)
 
         return {"new_x": new_x, "new_y": new_y, "y_pred": y_pred, "y_std": y_std}
-
-
     
     def oned_plot(self, y_pred, y_std,new_x,new_y,i):
         fig, (ax1, ax2) = plt.subplots(nrows=1,ncols=2,figsize=(10, 5))
@@ -108,22 +115,18 @@ class BayesianOptimizer:
             try:
                 if len(self.recorded_points.best_y) > 10:
                     optimal_values, covariance = curve_fit(exp_decay, x_data_convergence_curve, self.recorded_points.best_y,p0=[a,b,c], bounds = ([0, 0, self.recorded_points.best_y[-1] - self.recorded_points.best_y[0] + self.recorded_points.best_y[-1]], [self.recorded_points.best_y[0], np.inf, self.recorded_points.best_y[-1]]), maxfev=10000)
-                    percentage_gain = ((c - optimal_values[-1]) / c)*100
-                    print(f"Percentage gain:{percentage_gain}")
-                    if self.stopping:
-                        if percentage_gain < self.epsilon:
-                            print(f"Best value: {c}")
+                    if self.stopping.should_stop(optimal_values, self.recorded_points, covariance):
                             self.multid_plot(results['y_pred'],results['y_std'],results['new_x'],results['new_y'],optimal_values,i)
                             break
-            except:
-                raise RuntimeError("Curve fitting failure :(")
+            except (RuntimeError, ValueError):
+                continue
 
 
 if __name__ == "__main__":
     #x_range = np.linspace(-2*np.pi, 2*np.pi, 200)
     x_bounds = np.array([(-15,20)])
     surrogate_model = SurrogateModel()
-    optimizer = BayesianOptimizer(black_box_function_2,x_bounds,5,20,surrogate_model,acquisition_lcb,1e-08,True)
+    optimizer = BayesianOptimizer(black_box_function_2,x_bounds,5,500,surrogate_model,acquisition_lcb,PercentageGainStopping(0.01))
     optimizer.initialize()
     optimizer.loop()
 
