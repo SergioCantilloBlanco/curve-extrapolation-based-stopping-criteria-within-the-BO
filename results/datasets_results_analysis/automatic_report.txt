@@ -1,0 +1,29 @@
+AUTOMATIC EXPERIMENT ANALYSIS REPORT
+======================================================================
+
+DATASET: loan_data
+- No early stopping: MAE=0.144736 (std=0.004142), time=60.06s (std=4.85s)
+- Conventional early stopping: MAE=0.144565 (std=0.003812), time=36.16s (std=4.53s)
+- Curve extrapolation: MAE=0.145698 (std=0.004193), time=22.23s (std=5.09s)
+- Extrapolation time saving vs no ES: 62.64%
+- Extrapolation time saving vs conventional ES: 37.54%
+- Extrapolation MAE difference vs no ES: 0.000962
+- Extrapolation MAE difference vs conventional ES: 0.001133
+
+DATASET: stroke_dataset
+- No early stopping: MAE=0.154084 (std=0.012825), time=8.94s (std=1.47s)
+- Conventional early stopping: MAE=0.154342 (std=0.012714), time=4.94s (std=0.69s)
+- Curve extrapolation: MAE=0.153983 (std=0.012999), time=5.52s (std=0.62s)
+- Extrapolation time saving vs no ES: 36.76%
+- Extrapolation time saving vs conventional ES: -13.93%
+- Extrapolation MAE difference vs no ES: -0.000101
+- Extrapolation MAE difference vs conventional ES: -0.000359
+
+DATASET: wine_quality_red
+- No early stopping: MAE=0.363403 (std=0.022118), time=14.40s (std=3.71s)
+- Conventional early stopping: MAE=0.362962 (std=0.021599), time=13.48s (std=3.08s)
+- Curve extrapolation: MAE=0.365739 (std=0.023671), time=9.14s (std=2.95s)
+- Extrapolation time saving vs no ES: 34.17%
+- Extrapolation time saving vs conventional ES: 30.86%
+- Extrapolation MAE difference vs no ES: 0.002336
+- Extrapolation MAE difference vs conventional ES: 0.002777

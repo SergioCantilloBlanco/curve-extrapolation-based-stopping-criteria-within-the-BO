@@ -37,14 +37,19 @@ def train_xgboost(num_boost_round, trial, study, params, dtrain, dval):
     return evals_result
 
 results = []
-early_stopped_trials = []
+trial_records = []
 df = pd.read_csv(
         "curve-extrapolation-based-stopping-criteria-within-the-BO/data/winequality-red.csv"
     )
+
+y = df.diagnosis
+df.drop(columns=["id"], inplace=True)
+df.drop(columns=["diagnosis"], inplace=True)
+X = df
+
 for SEED in SEED:
     np.random.seed(SEED)
-    y = df.quality
-    X = df.iloc[:, :-1]
+
 
     X_train, X_val, y_train, y_val = train_test_split(
         X,
@@ -77,11 +82,31 @@ for SEED in SEED:
             "seed": SEED,
         }
         try:
+            previous_best = (
+            study.best_value
+            if len(study.trials) > 0
+            else np.nan
+            )
             evals_result = train_xgboost(num_boost_round, trial, study, param, dtrain, dval)
+
+            try:
+                trial_records.append({
+                "seed": SEED,
+                "trial": trial.number,
+                "predicted_best": min(evals_result["val"]["mae"]),
+                "rounds_seen": len(evals_result["val"]["mae"]),
+                "num_boost_round": trial.params["num_boost_round"],
+                "last_observed_mae": evals_result["val"]["mae"][-1],
+                "best_so_far": previous_best,
+                "params": trial.params,
+                "early_stopped": False
+                })
+            except Exception as e:
+                print(f"Error appending early stopped trial: {e}")
             trial.set_user_attr("early_stopped", False)
             return min(evals_result["val"]["mae"])
         except EarlyStopWithPrediction as e:
-            early_stopped_trials.append({
+            trial_records.append({
             "seed": SEED,
             "trial": trial.number,
             "predicted_best": e.predicted_value,
@@ -90,6 +115,7 @@ for SEED in SEED:
             "last_observed_mae": e.val_mae_history[-1],
             "best_so_far": e.best_so_far,
             "params": trial.params,
+            "early_stopped": True
             })
             trial.set_user_attr("early_stopped", True)
             return e.predicted_value
@@ -126,6 +152,6 @@ for SEED in SEED:
         })
 
 results_df = pd.DataFrame(results)
-early = pd.DataFrame(early_stopped_trials)
-results_df.to_csv('curve-extrapolation-based-stopping-criteria-within-the-BO/results/extrapolation_results.csv', index=False)
-early.to_csv('curve-extrapolation-based-stopping-criteria-within-the-BO/results/early_stopped_trials.csv', index=False)
+early = pd.DataFrame(trial_records)
+results_df.to_csv('curve-extrapolation-based-stopping-criteria-within-the-BO/results/cancer_extrapolation_results.csv', index=False)
+early.to_csv('curve-extrapolation-based-stopping-criteria-within-the-BO/results/cancer_early_stopped_trials.csv', index=False)

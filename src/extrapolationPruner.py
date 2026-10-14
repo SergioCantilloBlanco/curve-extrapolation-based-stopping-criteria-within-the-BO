@@ -2,13 +2,14 @@ import numpy as np
 import optuna
 from optuna.pruners import BasePruner
 from scipy.optimize import curve_fit
+from curves import double_exponential
 
 
 
 class extrapolationPruner(BasePruner):
     def __init__(
         self,
-        curve_model,
+        curve_model = double_exponential,
         observation_fraction=[0.2],
     ):
         self.curve_model = curve_model
@@ -36,7 +37,7 @@ class extrapolationPruner(BasePruner):
             )
         except Exception as e:
             print(f"Error fitting curve: {e}")
-            return None, None
+            return None
 
         return optimal_values, covariance
 
@@ -83,9 +84,6 @@ class extrapolationPruner(BasePruner):
             return False, None, None, None
 
         best_so_far = study.best_value
-        
-        sigma = np.sqrt(covariance[-1, -1])
-        margin = 2 * sigma
 
         # prediction = optimal_values[-1]
 

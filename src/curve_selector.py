@@ -12,7 +12,6 @@ import time
 SEED = 100
 N_TRIALS = 50
 TEST_SIZE = 0.2
-observable_percentage = 0.2
 
 def train_xgboost(num_boost_round, params, dtrain, dval):
     evals_result = {}
@@ -36,27 +35,22 @@ def fit_curve(OBSERVED_ROUNDS, val_mae_history, trial_number, observed_percentag
 
     future_x = x[OBSERVED_ROUNDS:]
     future_y = y[OBSERVED_ROUNDS:]
-    remaining_rounds = len(future_x)
 
     y0 = extrapolation_y[0]
     yend = extrapolation_y[-1]
     amp = y0 - yend
 
-    # lower_bounds = [0,0,0,0,0]
-    # upper_bounds = [np.inf,5,np.inf,5,yend]
-
     models = {
+        "Exponential": (exponential,[amp,0.1,yend]),
         "Double Exp": (double_exponential,[amp*0.7,0.5,amp*0.3,0.03,yend]),
-        # "Exponential": (exponential,[amp,0.1,yend]),
-        # "Power Law": (power_law,[amp*10,1.0,1.0,yend]),
-        # "Logarithmic": (logarithmic,[y0,amp/np.log(OBSERVED_ROUNDS+1),1.0 ]),
-        # "Rational": (rational,[amp*5,1.0,yend]),
-        # "General Rational": (rational_general,[1.0, y0, 1.0, 1.0]),
-        # "Weibull": (weibull,[amp, 0.1, 1.0, yend]),
-        # "Stretched Exp": (stretched_exponential,[amp, 0.1, 0.8, yend]),
-        # "Gompertz": (gompertz,[amp,-0.1,OBSERVED_ROUNDS/2,yend]),
-        # "Logistic": (logistic,[amp,0.1,OBSERVED_ROUNDS/2,yend])
-        }
+        "Power Law": (power_law,[amp*10,1.0,1.0,yend]),
+        "Logarithmic": (logarithmic,[y0,amp/np.log(OBSERVED_ROUNDS+1),1.0 ]),
+        "Rational": (rational,[amp*5,1.0,yend]),
+        "General Rational": (rational_general,[1.0, y0, 1.0, 1.0]),
+        "Weibull": (weibull,[amp, 0.1, 1.0, yend]),
+        "Stretched Exp": (stretched_exponential,[amp, 0.1, 0.8, yend]),
+        "Gompertz": (gompertz,[amp,-0.1,OBSERVED_ROUNDS/2,yend]),
+        "Logistic": (logistic,[amp,0.1,OBSERVED_ROUNDS/2,yend])}
 
     for _, (model_name, (model_func, initial_params)) in enumerate(models.items()):
         try:
@@ -65,12 +59,11 @@ def fit_curve(OBSERVED_ROUNDS, val_mae_history, trial_number, observed_percentag
                 extrapolation_x,
                 extrapolation_y,
                 p0=initial_params,
-                # bounds=(lower_bounds, upper_bounds),
-                maxfev=1000
+                maxfev=10000
             )
 
             predicted_y = model_func(np.array(future_x), *optimal_values)
-
+            remaining_rounds = len(future_x)
             results.append({
                 "trial": trial_number,
                 "curve": model_name,
@@ -126,12 +119,13 @@ def objective_hpo(trial):
 
 
     model, evals_result = train_xgboost(num_boost_round, param, dtrain, dval)
-    results = fit_curve(int(num_boost_round*observable_percentage), evals_result['val']['mae'], trial.number, observable_percentage)
-    all_results.extend(results)
+    for observable_percentage in [0.20]:
+        results = fit_curve(int(num_boost_round*observable_percentage), evals_result['val']['mae'], trial.number, observable_percentage)
+        all_results.extend(results)
 
 
 
-    return evals_result["val"]["mae"][-1]
+    return min(evals_result["val"]["mae"])
 
 sampler = optuna.samplers.GPSampler(seed=SEED)
 study = optuna.create_study(sampler= sampler, direction='minimize')
@@ -141,16 +135,29 @@ finish_time = time.time()
 
 results_df = pd.DataFrame(all_results)
 
-summary = (
+summary_curve = (
     results_df
     .groupby("curve")
     .agg(
         mean_error=("error", "mean"),
         std_error=("error", "std"),
-        success=("success", "mean")
+        max_error=("error", "max"),
+        n=("error", "count")
     )
+    .sort_values("mean_error")
 )
-print(summary)
+summary_percentage = (
+    results_df.loc[results_df['curve'] == "Double Exp"].groupby("observed_percentage").agg(
+        mean_error=("error", "mean"),
+        std_error=("error", "std"),
+        max_error=("error", "max"),
+        n=("error", "count")
+    )
+    .sort_values("mean_error")
+)
+
+print(summary_curve)
+print(summary_percentage)
 
 
 # print(f"Observed Rounds: {OBSERVED_ROUNDS}")
@@ -160,26 +167,26 @@ print(summary)
 # print(f"Optimal Parameters: {optimal_values}")
 
 
-fig, axs = plt.subplots(1, 2, figsize=(12,5))
+# fig, axs = plt.subplots(1, 2, figsize=(12,5))
 
-axs[0].plot(x, y, label='Actual MAE')
-axs[0].axvline(OBSERVED_ROUNDS-1, color='gray', linestyle='--',
-        label='Observation cutoff')
-axs[0].legend()
-axs[0].set_xlabel('Boosting Round')
-axs[0].set_ylabel('MAE')
-axs[0].set_title('Validation MAE History')
+# axs[0].plot(x, y, label='Actual MAE')
+# axs[0].axvline(OBSERVED_ROUNDS-1, color='gray', linestyle='--',
+#         label='Observation cutoff')
+# axs[0].legend()
+# axs[0].set_xlabel('Boosting Round')
+# axs[0].set_ylabel('MAE')
+# axs[0].set_title('Validation MAE History')
 
-# Extrapolation comparison
-axs[1].plot(extrapolation_x, extrapolation_y, 'r.-', label='Observed')
-axs[1].plot(future_x, future_y, 'g.-', label='Actual Future')
-axs[1].plot(future_x, predicted_y, 'b--', linewidth=2, label='Predicted Future')
+# # Extrapolation comparison
+# axs[1].plot(extrapolation_x, extrapolation_y, 'r.-', label='Observed')
+# axs[1].plot(future_x, future_y, 'g.-', label='Actual Future')
+# axs[1].plot(future_x, predicted_y, 'b--', linewidth=2, label='Predicted Future')
 
-axs[1].set_xlabel('Boosting Round')
-axs[1].set_ylabel('MAE')
-axs[1].set_title('Curve Extrapolation')
-axs[1].legend()
+# axs[1].set_xlabel('Boosting Round')
+# axs[1].set_ylabel('MAE')
+# axs[1].set_title('Curve Extrapolation')
+# axs[1].legend()
 
 
-plt.tight_layout()
-plt.show()
+# plt.tight_layout()
+# plt.show()

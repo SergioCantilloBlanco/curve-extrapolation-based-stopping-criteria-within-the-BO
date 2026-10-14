@@ -11,11 +11,7 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from sklearn.metrics import precision_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import f1_score
-from sklearn.metrics import accuracy_score
+
 
 TEST_SIZE = 0.2
 
@@ -105,7 +101,6 @@ results_df.to_csv(
     index=False,
 )
 
-# Metrics
 errors = results_df["error"]
 abs_errors = results_df["absolute_error"]
 
@@ -125,58 +120,3 @@ print(f"Prediction MAE : {prediction_mae:.6f}")
 print(f"Bias           : {bias:.6f}")
 print(f"RMSE           : {rmse:.6f}")
 print(f"Correlation    : {correlation:.4f}")
-
-
-true_early_stopping = results_df["actual_best"] > results_df["best_so_far"]
-predicted_early_stopping = np.ones(len(results_df), dtype=bool)
-
-cm = confusion_matrix(true_early_stopping, predicted_early_stopping)
-
-print("Accuracy :", accuracy_score(true_early_stopping, predicted_early_stopping))
-print("Precision:", precision_score(true_early_stopping, predicted_early_stopping))
-print("Recall   :", recall_score(true_early_stopping, predicted_early_stopping))
-print("F1       :", f1_score(true_early_stopping, predicted_early_stopping))
-
-disp = ConfusionMatrixDisplay(
-    confusion_matrix=cm,
-    display_labels=["Keep", "Prune"]
-)
-disp.plot(cmap=plt.cm.Blues)
-plt.show()
-
-loss = results_df.loc[
-    results_df["actual_best"] <= results_df["best_so_far"],
-    "best_so_far"
-] - results_df.loc[
-    results_df["actual_best"] <= results_df["best_so_far"],
-    "actual_best"
-]
-
-print(loss.describe())
-
-# Scatter plot
-plt.figure(figsize=(6, 6))
-
-plt.scatter(
-    results_df["actual_best"],
-    results_df["predicted_best"],
-)
-
-mn = min(
-    results_df["actual_best"].min(),
-    results_df["predicted_best"].min(),
-)
-
-mx = max(
-    results_df["actual_best"].max(),
-    results_df["predicted_best"].max(),
-)
-
-plt.plot([mn, mx], [mn, mx], "r--", label="Ideal prediction")
-
-plt.xlabel("Actual best MAE")
-plt.ylabel("Predicted best MAE")
-plt.title("Prediction quality of curve extrapolation")
-plt.legend()
-plt.tight_layout()
-plt.show()

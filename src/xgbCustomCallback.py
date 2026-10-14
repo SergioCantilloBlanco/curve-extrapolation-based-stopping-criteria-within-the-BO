@@ -8,15 +8,16 @@ class EarlyStopWithPrediction(Exception):
         super().__init__(f"Early stopped, predicted value: {predicted_value}")
 
 class customCallback(xgb.callback.TrainingCallback):
-    def __init__(self, trial, study):
+    def __init__(self, trial, study, metric):
         self.trial = trial
         self.study = study
+        self.metric = metric
 
     def after_iteration(self, model, epoch, evals_log):
-        current_mae = evals_log["val"]["mae"][-1]
+        current_mae = evals_log["val"][self.metric][-1]
         self.trial.report(current_mae, step=epoch)
 
-        should_stop, predicted_value, val_mae_history, best_so_far = self.study.pruner.prune(self.study, self.trial, evals_log["val"]["mae"])
+        should_stop, predicted_value, val_mae_history, best_so_far = self.study.pruner.prune(self.study, self.trial, evals_log["val"][self.metric])
         if should_stop:
             raise EarlyStopWithPrediction(predicted_value, val_mae_history, best_so_far)
         return False
