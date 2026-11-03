@@ -191,87 +191,11 @@ El proyecto utiliza principalmente las siguientes herramientas y bibliotecas:
 
 ---
 
-## Instalación
-
-Se recomienda utilizar un entorno virtual de Python para instalar las dependencias del proyecto.
-
-### 1. Clonar el repositorio
-
-```bash
-git clone <URL_DEL_REPOSITORIO>
-cd <NOMBRE_DEL_REPOSITORIO>
-```
-
-### 2. Crear un entorno virtual
-
-En Windows:
-
-```bash
-python -m venv venv
-venv\Scripts\activate
-```
-
-En Linux o macOS:
-
-```bash
-python -m venv venv
-source venv/bin/activate
-```
-
-### 3. Instalar las dependencias
-
-Si el proyecto dispone de un archivo `requirements.txt`:
-
-```bash
-pip install -r requirements.txt
-```
-
-Si todavía no existe, será necesario crear uno con las dependencias utilizadas y sus versiones correspondientes.
-
----
-
-## Ejecución
-
-Los experimentos se organizan en diferentes ejecuciones para permitir evaluar tanto las funciones de extrapolación como las estrategias de parada anticipada.
-
-Una vez instalado el entorno y configuradas las rutas de los conjuntos de datos, se podrán ejecutar los scripts correspondientes.
-
-Los comandos concretos de ejecución deben añadirse aquí según los nombres reales de los archivos principales del repositorio.
-
----
-
-## Estructura del proyecto
-
-La siguiente estructura es una propuesta orientativa para organizar el repositorio. Debe adaptarse a los directorios y archivos reales del proyecto.
-
-```text
-.
-├── data/
-│   ├── loan_data/
-│   ├── stroke_dataset/
-│   └── wine_quality_red/
-│
-├── src/
-│   ├── curves.py
-│   ├── ...
-│
-├── results/
-│   ├── ...
-│
-├── plots/
-│   ├── ...
-│
-├── requirements.txt
-└── README.md
-```
-
 Descripción de los directorios:
 
 - `data/`: conjuntos de datos utilizados en los experimentos.
 - `src/`: implementación del método de extrapolación y los experimentos.
 - `results/`: resultados numéricos generados durante las ejecuciones.
-- `plots/`: gráficas utilizadas para analizar y comparar los resultados.
-- `requirements.txt`: dependencias necesarias para ejecutar el proyecto.
 - `README.md`: documentación general del repositorio.
 
 ---
@@ -293,8 +217,3 @@ Por este motivo, resulta importante evaluar el método en diferentes conjuntos d
 ## Autoría
 
 Proyecto desarrollado como parte de un Trabajo de Fin de Grado centrado en el estudio de criterios de parada anticipada basados en la extrapolación de curvas de aprendizaje dentro de la optimización bayesiana de hiperparámetros.
-
-**Autor:** [Nombre del autor]  
-**Titulación:** [Nombre de la titulación]  
-**Universidad:** [Nombre de la universidad]  
-**Año:** 2026
