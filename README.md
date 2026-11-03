@@ -41,25 +41,8 @@ El procedimiento general es el siguiente:
 6. La estimación se compara con el mejor resultado obtenido hasta ese momento en el proceso de optimización.
 7. Si el rendimiento futuro estimado no permite superar el mejor resultado conocido, se interrumpe el entrenamiento del ensayo.
 
-La función principal utilizada en el método de extrapolación es una función exponencial doble:
 
-\[
-f(x)=ae^{-bx}+ce^{-dx}+e
-\]
-
-donde los parámetros se ajustan a partir de los puntos observados de la curva de validación.
-
-Para un problema de minimización, el criterio de parada se basa en comparar el mejor valor futuro estimado con el mejor valor obtenido anteriormente:
-
-\[
-\hat{L}_{best}>L_{BO}
-\]
-
-donde:
-
-- \(\hat{L}_{best}\) representa el mejor rendimiento estimado para el ensayo actual.
-- \(L_{BO}\) representa el mejor valor obtenido hasta ese momento por el proceso de optimización.
-
+Para un problema de minimización, el criterio de parada se basa en comparar el mejor valor futuro estimado con el mejor valor obtenido anteriormente.
 Si se cumple esta condición, el entrenamiento se interrumpe.
 
 ---
