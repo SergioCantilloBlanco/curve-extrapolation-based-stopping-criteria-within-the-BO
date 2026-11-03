@@ -173,11 +173,11 @@ def run_no_early_stopping(
     )
     metric = dataset_config["eval_metric"]
 
-    best_mae = min(
+    best_score = min(
         evals_result["val"][metric]
     )
 
-    return best_mae
+    return best_score
 
 # ============================================================
 # BASELINE 2
@@ -208,11 +208,11 @@ def run_conventional_early_stopping(
     )
     metric = dataset_config["eval_metric"]
 
-    best_mae = min(
+    best_score = min(
         evals_result["val"][metric]
     )
 
-    return best_mae
+    return best_score
 
 # ============================================================
 # METHOD 3
@@ -335,7 +335,7 @@ def run_experiment(
         "seed": seed,
         "n_samples": len(X),
         "n_features": X.shape[1],
-        "best_mae": best_trial.value,
+        "best_score": best_trial.value,
         "best_trial": best_trial.number,
         "trials": len(study.trials),
         "execution_time":
